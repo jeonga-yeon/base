@@ -1,39 +1,44 @@
-require("dotenv").config();
-
 const express = require("express");
 const app = express();
-const port = process.env.PORT;
+const path = require("path");
+
 const bodyParser = require("body-parser");
-const { User } = require("./models/User");
+const cookieParser = require("cookie-parser");
 
 const config = require("./config/key");
+
+require("dotenv").config();
+
+const mongoose = require("mongoose");
+mongoose
+  .connect(config.mongoURI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("MongoDB Connected..."))
+  .catch((err) => console.log(err));
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
 app.use(bodyParser.json());
+app.use(cookieParser());
 
-const mongoose = require("mongoose");
+app.use("/api/users", require("./routes/users"));
 
-mongoose
-  .connect(config.mongoURI)
-  .then(() => console.log("mongoDB connected..."))
-  .catch((error) => console.log(error));
+app.use("/uploads", express.static("uploads"));
 
-app.get("/", (req, res) => {
-  res.send("Hello World");
-});
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static("client/build"));
 
-app.post("/register", (req, res) => {
-  const user = new User(req.body);
-
-  user.save((err, userInfo) => {
-    if (err) return res.json({ success: false, err });
-    return res.status(200).json({
-      success: true,
-    });
+  app.get("*", (req, res) => {
+    res.sendFile(path.resolve(__dirname, "../client", "build", "index.html"));
   });
-});
+}
+
+app.get("/", (req, res) => res.send("Hello World"));
+
+const port = process.env.PORT;
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+  console.log(`Server Listening on ${port}`);
 });
